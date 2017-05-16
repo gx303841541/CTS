@@ -465,6 +465,7 @@ class case_handle():
         self.out_queue = out_queue
         self.log_dir = log_dir
         self.db_handle = common_tool.db_handle()
+        self.result = open('result.log', 'a')
 
     def run_case(self, id):
         LOG.p.info("Run: %s" % id)
@@ -782,6 +783,8 @@ class case_handle():
                         LOG.p.error("Run case fail! maybe case has errors!")
                         result_code = 'compile'
                     self.out_queue.put(caseid.strip() + '-' + result_code.strip())
+                    self.result.write(caseid.strip() + ':' + result_code.strip() + '\n')
+                    self.result.flush()
             except Exception as e:
                 LOG.p.error("Run case end! Reason: %s" %e)
                 sys.exit(0)

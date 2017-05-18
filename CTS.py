@@ -93,6 +93,18 @@ class arg_handle():
         return getattr(self.args, attrname)
 
     def check_args(self):
+
+        #To kill old instance
+        self_pid = os.getpid()
+        LOG.p.critical("Self PID %s..." % (self_pid))
+        active_instance = common_tool.my_system("ps -ef |  grep -E CTS.py | grep -E -v 'grep|dtach'")
+        for old_pid in re.finditer(r'^root\s+(\d+)', active_instance, re.M):
+            if old_pid.group(1) == str(self_pid):
+                continue
+            else:
+                LOG.p.critical("To kill %s..." % (old_pid.group(1)))
+                common_tool.my_system("kill -9 %s" % (old_pid.group(1)))
+
         if os.path.exists(self.get_args('node_file')):
             pass
         else:
@@ -189,7 +201,7 @@ class schedule_centre():
                 if is_done == 'no':
                     time.sleep(1)
 
-        LOG.p.info("All %s cases had finish the first round! Now, to re-run the failed cases!" % (self.types))
+        LOG.p.info("All %s cases had finish the first round! Now, to re-run the failed cases if have!" % (self.types))
 
         has_case = 'yes'
         while has_case == 'yes':
@@ -293,6 +305,7 @@ def sys_proc(action="default"):
     for th in thread_ids:
         th.setDaemon(True)        
         th.start()
+        time.sleep(1)
 
     #for th in thread_ids:        
     #    th.join() 
@@ -347,7 +360,7 @@ if __name__ == '__main__':
         
         sys_proc()
            
-        my_cmd = my_cmd(data_centre_handle, task_handle)
+        my_cmd = my_cmd(data_centre_handle, task_handle, report_handle)
         my_cmd.cmdloop()
         
     else:

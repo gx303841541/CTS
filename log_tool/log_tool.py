@@ -12,7 +12,7 @@ import coloredlogs
 
 
 class my_logging:
-    def __init__(self, path, clevel=logging.DEBUG, flevel=logging.DEBUG):
+    def __init__(self, path, clevel=logging.INFO, flevel=logging.INFO):
         coloredlogs.install(level=clevel)
 
         self.p = logging.getLogger(path)
@@ -32,9 +32,9 @@ class my_logging:
         self.p.addHandler(fh)
 
         #定义一个RotatingFileHandler，最多备份5个日志文件，每个日志文件最大1M
-        rh = RotatingFileHandler('system.log', maxBytes=1 * 1024 * 1024, backupCount=5)
+        rh = RotatingFileHandler('system.log', maxBytes=10 * 1024 * 1024, backupCount=5)
         rh.setFormatter(fmt)
-        rh.setLevel(logging.DEBUG)
+        rh.setLevel(logging.INFO)
         self.p.addHandler(rh)
 
     def debug(self,message):

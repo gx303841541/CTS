@@ -19,11 +19,12 @@ import subprocess
 P = cprint.cprint()
 
 class my_cmd(Cmd): 
-    def __init__(self, data_centre, task_handle):
+    def __init__(self, data_centre, task_handle, report_handle):
         Cmd.__init__(self)
         self.prompt = "CTS>"
         self.data_centre = data_centre
-        self.task_handle = task_handle    
+        self.task_handle = task_handle
+        self.report_handle = report_handle
           
     def help_listnode(self):  
         P.common_p("list the node state")     
@@ -73,7 +74,13 @@ class my_cmd(Cmd):
       
     def do_showreport(self, arg, opts=None):  
         self.data_centre.case_resource.show_report()
-        
+  
+    def help_givereport(self):  
+        P.common_p("give a report about all cases")
+      
+    def do_givereport(self, arg, opts=None):  
+        self.report_handle.give_report()        
+
     def help_addtask(self):  
         P.common_p("add a task by: name, func, run_time, interval, *argv")
       

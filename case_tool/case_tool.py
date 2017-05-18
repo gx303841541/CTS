@@ -480,7 +480,7 @@ class case_handle():
         if last_case_info:
             r = re.match('^.*cts-(?P<execid>\d+)-%s.*$' % (id.strip()), last_case_info, re.S | re.U)
             if r:
-                LOG.p.debug("Get execid: %s for caseid: %s" % (r.group('execid'), id))
+                LOG.p.info("Get execid: %s for caseid: %s" % (r.group('execid'), id))
                 return r.group('execid')
             else:
                 LOG.p.warning("Exec fail for caseid: %s [%s]" % (id, last_case_info))

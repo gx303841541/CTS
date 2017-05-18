@@ -13,7 +13,7 @@ import select
 from log_tool.log_tool import my_logging
 import logging
 
-log_handle = my_logging(__name__ + ".log", clevel=logging.INFO, flevel=logging.DEBUG)
+log_handle = my_logging(__name__ + ".log", clevel=logging.INFO, flevel=logging.INFO)
 
 class my_server:
     def __init__(self, addr, data_centre):

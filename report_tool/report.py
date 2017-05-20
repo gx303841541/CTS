@@ -28,7 +28,7 @@ class report():
         
     def run_onetimes(self):
         loop = 1
-        time.sleep(5)
+        time.sleep(1)
         for i in range(self.try_times):
             self.semaphore.acquire()
         while loop == 1:
@@ -38,7 +38,7 @@ class report():
                 loop = 0
             else:
                 LOG.p.info("It is time to give a report, but some cases still onging, wait...")
-                time.sleep(60)
+                time.sleep(30)
                 continue
                 
         for i in range(self.try_times):
@@ -67,16 +67,18 @@ class report():
             states = {}
             rerults = {}
             rerults['pass'] = 0
+
             for id in self.data_centre.case_resource.get_all_cases():
                 if self.data_centre.case_resource.get_case_state(id) in states:
                     states[self.data_centre.case_resource.get_case_state(id)] += 1
                 else:
                     states[self.data_centre.case_resource.get_case_state(id)] = 1
 
-                if self.data_centre.case_resource.get_case_result(id) in rerults:
-                    rerults[self.data_centre.case_resource.get_case_result(id)] += 1
+                result = self.data_centre.case_resource.get_case_result(id)
+                if result in rerults:
+                    rerults[result] += 1
                 else:
-                    rerults[self.data_centre.case_resource.get_case_result(id)] = 1                
+                    rerults[result] = 1
                         
             for item in sorted(states):
                 r.write("    " + item.ljust(20) + ':' + str(states[item]).rjust(20) + '\n')
@@ -102,15 +104,32 @@ class report():
             r_rerults = {}
             r_errors = {}
             total = 0
+            nodes = {}
             for id in self.data_centre.case_resource.get_all_cases():
                 result = self.data_centre.case_resource.get_case_result(id)
+                if self.data_centre.case_resource.get_run_node(id):
+                    on_node = self.data_centre.node_resource.get_hostname(self.data_centre.case_resource.get_run_node(id)[-1])
+                else:
+                    on_node = 'xxxx'
+
+                if on_node in nodes:
+                    pass
+                else:
+                    nodes[on_node] = {
+                        'pass': {},
+                        'fail': {},
+                    }
+                
+
                 ffd_id = id[:4]
                 if result != 'pass':
                     total += 1
+
+                    to_show = ("last fail on: %s" % (on_node)).rjust(40)
                     if ffd_id in r_rerults:
-                        r_rerults[ffd_id][id] = result
+                        r_rerults[ffd_id][id] = result.ljust(20) + to_show
                     else:
-                        r_rerults[ffd_id] = {id:result}
+                        r_rerults[ffd_id] = {id:result.ljust(20) + to_show}
 
                     if result in r_errors:
                         if ffd_id in r_errors[result]:
@@ -119,6 +138,10 @@ class report():
                             r_errors[result][ffd_id] = 1
                     else:
                         r_errors[result] = {ffd_id: 1}
+
+                    nodes[on_node]['fail'][id] = result
+                else:
+                    nodes[on_node]['pass'][id] = result
 
 
             for ffd_id in r_rerults:
@@ -130,14 +153,23 @@ class report():
             r.write('=' * 30 + '\n')  
 
             for r_error in r_errors:
-                total = 0
+                counter = 0
                 r.write("%s:\n" % (r_error))
                 for ffd_id in sorted(r_errors[r_error]):
                     r.write("\t%s: %d\n" % (ffd_id, r_errors[r_error][ffd_id]))
-                    total += r_errors[r_error][ffd_id]
-                r.write("\tTotal: %d\n" % (total))
+                    counter += r_errors[r_error][ffd_id]
+                r.write("\tTotal: %d\n" % (counter))
                 r.write('-' * 30 + '\n')
             r.write('Total: %d\n' % (total)) 
             r.write('=' * 60 + '\n')
 
+            for node in nodes:
+                r.write("Node: %s\n" % (node))
+                r.write("    " + 'pass'.ljust(20) + ':' + ('%d' % (len(nodes[node]['pass']))).rjust(20) + '\n')
+                r.write("    " + 'fail'.ljust(20) + ':' + ('%d' % (len(nodes[node]['fail']))).rjust(20) + '\n')
+                for id in sorted(nodes[node]['fail']):
+                    r.write("    " * 2 + ('%s' % (id)).ljust(20) + '=' + ('%s' % (nodes[node]['fail'][id])).rjust(20) + '\n')
+                r.write('-' * 30 + '\n')
+
+            r.write('=' * 60 + '\n')
             LOG.p.info("Given report done!")

@@ -44,7 +44,7 @@ def need_add_lock(lock):
 
 CASE_STATE = ['not_start', 'ongoing', 'running', 'done']
 class _case_state():
-    def __init__(self, id, types, max_try_times=2, run_times=0,
+    def __init__(self, id, types, max_try_times=3, run_times=0,
                 state='not_start'):
         self.id = id
         self.types = types
@@ -265,7 +265,13 @@ class _cases_resource():
         for id in self.cases:
             yield(id)
 
-    def get_next_case(self, case_type):
+    def get_one_case(self, case_type):
+        for id in sorted(self.cases):
+            if (self.get_case_state(id) == 'not_start' and self.get_case_type(id) == case_type) or (self.get_case_state(id) != 'running' and self.get_case_state(id) != 'done' and self.get_case_result(id) != 'pass' and self.get_run_times(id) < self.get_max_try_times(id) and self.get_case_type(id) == case_type):
+                return id 
+        return None
+
+    def get_next_nostart_case(self, case_type):
         for id in self.cases:
             if self.get_case_state(id) == 'not_start' and self.get_case_type(id) == case_type:
                 yield(id)

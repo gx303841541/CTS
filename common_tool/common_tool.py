@@ -29,6 +29,8 @@ condition = threading.Condition()
 #condition.wait()
 #condition.release()
 
+
+#2 should == node/case types 
 semaphore = threading.Semaphore(2)
 #semaphore.acquire():
 #semaphore.release()

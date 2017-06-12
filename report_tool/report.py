@@ -65,6 +65,7 @@ class report():
         with open('report.log', 'w') as r:
             r.write('-' * 30 + '\n')
             states = {}
+            states['not_start'] = 0
             rerults = {}
             rerults['pass'] = 0
 
@@ -92,7 +93,7 @@ class report():
             with decimal.localcontext() as ctx:
                 ctx.prec = 2
                 if 'done' in states:
-                    r.write("    " + 'Success Rate'.ljust(20) + ':' + ("%.2f" % (rerults['pass'] * 100.0 / states['done']) + '%').rjust(20) + '\n')
+                    r.write("    " + 'Success Rate'.ljust(20) + ':' + ("%.2f" % (rerults['pass'] * 100.0 / (len(list(self.data_centre.case_resource.get_all_cases())) - states['not_start'] - states['running'])) + '%').rjust(20) + '\n')
                     r.write("    " + 'Progress Rate'.ljust(20) + ':' + ("%.2f" % (states['done'] * 100.0 / len(list(self.data_centre.case_resource.get_all_cases()))) + '%').rjust(20) + '\n')
                 else:
                     r.write("    " + 'Success Rate'.ljust(20) + ':' + '0.00%'.rjust(20) + '\n')
@@ -164,6 +165,9 @@ class report():
             r.write('=' * 60 + '\n')
 
             for node in nodes:
+                if node in ['xxxx']:
+                    continue
+                
                 r.write("Node: %s\n" % (node))
                 r.write("    " + 'pass'.ljust(20) + ':' + ('%d' % (len(nodes[node]['pass']))).rjust(20) + '\n')
                 r.write("    " + 'fail'.ljust(20) + ':' + ('%d' % (len(nodes[node]['fail']))).rjust(20) + '\n')

@@ -268,7 +268,7 @@ class _cases_resource():
     def get_one_case(self, case_type):
         for id in sorted(self.cases):
             if (self.get_case_state(id) == 'not_start' and self.get_case_type(id) == case_type) or (self.get_case_state(id) != 'running' and self.get_case_state(id) != 'done' and self.get_case_result(id) != 'pass' and self.get_run_times(id) < self.get_max_try_times(id) and self.get_case_type(id) == case_type):
-                return id 
+                yield(id) 
         return None
 
     def get_next_nostart_case(self, case_type):
@@ -284,6 +284,7 @@ class _cases_resource():
     def show_report(self):
         P.common_p('-' * 30)
         states = {}
+        states['not_start'] = 0
         rerults = {}
         rerults['pass'] = 0
         for id in self.cases:
@@ -309,7 +310,7 @@ class _cases_resource():
         with decimal.localcontext() as ctx:
             ctx.prec = 2
             if 'done' in states:
-                P.common_p("    " + 'Success Rate'.ljust(20) + ':' + ("%.2f" % (rerults['pass'] * 100.0 / states['done']) + '%').rjust(20), fore='purple')
+                P.common_p("    " + 'Success Rate'.ljust(20) + ':' + ("%.2f" % (rerults['pass'] * 100.0 / (len(self.cases)- states['not_start'] - states['running'])) + '%').rjust(20), fore='purple')
                 P.common_p("    " + 'Progress Rate'.ljust(20) + ':' + ("%.2f" % (states['done'] * 100.0 / len(self.cases)) + '%').rjust(20), fore='cyan')
             else:
                 P.common_p("    " + 'Success Rate'.ljust(20) + ':' + '0.00%'.rjust(20), fore='purple')
@@ -471,7 +472,8 @@ class case_handle():
         self.out_queue = out_queue
         self.log_dir = log_dir
         self.db_handle = common_tool.db_handle()
-        self.result = open('result.log', 'a')
+        common_tool.my_system_no_check('mkdir /opt/cts_log/%s' % (self.log_dir))
+        self.result = open('/opt/cts_log/%s/result.log' % (self.log_dir), 'a')
 
     def run_case(self, id):
         LOG.p.info("Run: %s" % id)
@@ -777,7 +779,14 @@ class case_handle():
                     time.sleep(1)
                     pass
                 else:
-                    caseid = self.in_queue.get()
+                    caseid = self.in_queue.get().strip()
+
+                    if caseid == 'eeeeeeee':
+                        active_instance = common_tool.my_system("ps -ef |  grep -E CTS.py | grep -E -v 'grep|dtach'")
+                        for old_pid in re.finditer(r'^root\s+(\d+)', active_instance, re.M):
+                            LOG.p.critical("It time to exit!\nTo kill %s..." % (old_pid.group(1)))
+                            common_tool.my_system("kill -9 %s" % (old_pid.group(1)))
+
                     self.run_case(caseid)
                     exec_id = self.get_exec_id(id=caseid)
                     if exec_id:

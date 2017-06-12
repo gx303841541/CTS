@@ -26,10 +26,10 @@ class my_logging:
         #self.p.addHandler(sh)
         
         #设置文件日志
-        fh = logging.FileHandler(path)
-        fh.setFormatter(fmt)
-        fh.setLevel(flevel)    
-        self.p.addHandler(fh)
+        #fh = logging.FileHandler(path)
+        #fh.setFormatter(fmt)
+        #fh.setLevel(flevel)    
+        #self.p.addHandler(fh)
 
         #定义一个RotatingFileHandler，最多备份5个日志文件，每个日志文件最大1M
         rh = RotatingFileHandler('system.log', maxBytes=10 * 1024 * 1024, backupCount=5)

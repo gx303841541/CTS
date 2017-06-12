@@ -9,6 +9,7 @@ import re
 import os, time, datetime
 import sys
 import argparse
+import signal
 import common_tool.cprint as cprint
 import common_tool.common_tool as common_tool
 import report_tool.report as report
@@ -105,50 +106,53 @@ class arg_handle():
                 LOG.p.critical("To kill %s..." % (old_pid.group(1)))
                 common_tool.my_system("kill -9 %s" % (old_pid.group(1)))
 
-        if os.path.exists(self.get_args('node_file')):
-            pass
-        else:
-            self.p.error_p("node file not exist!")
-            sys.exit(1)
 
-        if self.get_args('mix_case_file'):
-            mix_case_file = self.get_args('mix_case_file')
-            LOG.p.info("Use %s to create case.yaml" % (mix_case_file))
 
-            all_cts_case_file = re.findall(r'(TestSuite_\w+_\w+\.cts)', common_tool.my_system("ls /opt/cts/CTS/ssr_epdg/cts_cases"), re.S)
-            for suite_file in all_cts_case_file:
-                LOG.p.info("Found suite file: %s" % (suite_file))
-
-            yaml_file = {}
-            case_types = {
-                'L': 'large',
-                'S': 'small',
-                'ICR': 'icr',
-                'T': 'twag',
-            }
-            with open(mix_case_file, 'r') as m:
-                for line in m:
-                    ids = re.findall(r'(\d{8})', line, re.M)
-                    for id in ids:
-                        #LOG.p.info("Found case: %s" % (id))
-                        for suite_file in all_cts_case_file:
-                            with open("/opt/cts/CTS/ssr_epdg/cts_cases/%s" % (suite_file), 'r') as s:
-                                if id in [i.strip() for i in s.readlines()]:
-                                    case_type = re.findall(r'_([A-Z]+)\.cts', suite_file, re.M)[0]
-                                    case_type = case_types[case_type]        
-                                    yaml_file[id] = case_type
-                                    LOG.p.info("Found case: %s in %s" % (id, suite_file))
-                                else:
-                                    continue
-            with open('case.yaml', 'w') as c:
-                yaml.dump(yaml_file, c) 
-
-        for case_file in self.get_args('case_file_list'):
-            if os.path.exists(case_file):
+        if arg_handle.get_args('role') in ['server', 'both']:
+            if os.path.exists(self.get_args('node_file')):
                 pass
             else:
-                self.p.error_p("case file: " + case_file + " not exist!")
+                self.p.error_p("node file not exist!")
                 sys.exit(1)
+
+            if self.get_args('mix_case_file'):
+                mix_case_file = self.get_args('mix_case_file')
+                LOG.p.info("Use %s to create case.yaml" % (mix_case_file))
+
+                all_cts_case_file = re.findall(r'(TestSuite_\w+_\w+\.cts)', common_tool.my_system("ls /opt/cts/CTS/ssr_epdg/cts_cases"), re.S)
+                for suite_file in all_cts_case_file:
+                    LOG.p.info("Found suite file: %s" % (suite_file))
+
+                yaml_file = {}
+                case_types = {
+                    'L': 'large',
+                    'S': 'small',
+                    'ICR': 'icr',
+                    'T': 'twag',
+                }
+                with open(mix_case_file, 'r') as m:
+                    for line in m:
+                        ids = re.findall(r'(\d{8})', line, re.M)
+                        for id in ids:
+                            #LOG.p.info("Found case: %s" % (id))
+                            for suite_file in all_cts_case_file:
+                                with open("/opt/cts/CTS/ssr_epdg/cts_cases/%s" % (suite_file), 'r') as s:
+                                    if id in [i.strip() for i in s.readlines()]:
+                                        case_type = re.findall(r'_([A-Z]+)\.cts', suite_file, re.M)[0]
+                                        case_type = case_types[case_type]        
+                                        yaml_file[id] = case_type
+                                        LOG.p.info("Found case: %s in %s" % (id, suite_file))
+                                    else:
+                                        continue
+                with open('case.yaml', 'w') as c:
+                    yaml.dump(yaml_file, c) 
+
+            for case_file in self.get_args('case_file_list'):
+                if os.path.exists(case_file):
+                    pass
+                else:
+                    self.p.error_p("case file: " + case_file + " not exist!")
+                    sys.exit(1)
            
 
     def run(self):
@@ -211,6 +215,7 @@ class schedule_centre():
                                 break
                             elif self.data_centre.node_resource.get_node_type(node) == self.types:
                                 LOG.p.debug(node + " in state:" + self.data_centre.node_resource.get_node_state(node))
+                        
                         if found_node == 'yes':
                             break
                         elif is_done == 'no':
@@ -309,6 +314,15 @@ class schedule_centre():
                     LOG.p.debug("%s is still runing, wait it finish!" % (case))
                     has_case = 'yes'
                     time.sleep(1)
+
+
+
+
+        #It time to let slient exit!
+        for node in self.data_centre.node_resource.get_all_nodes():
+            if self.data_centre.node_resource.get_node_state(node) in ['active', 'testing', 'working', 'idle'] and self.data_centre.node_resource.get_node_type(node) == self.types:
+                LOG.p.warning("It time to let %s exit!" % self.data_centre.node_resource.get_hostname(node)) 
+                self.data_centre.node_resource.add_data_out(node, 'eeeeeeee ')
 
         self.semaphore.release()
 
@@ -417,7 +431,9 @@ if __name__ == '__main__':
         thread_list.append([task_handle.task_proc])        
         
         sys_proc()
-           
+
+        #cmd loop    
+        signal.signal(signal.SIGINT, lambda signal, frame: print("%s[32;2m%s%s[0m" % (chr(27), '\nExit CLI: CTRL+Q, Exit SYSTEM: quit!!!!', chr(27))))
         my_cmd = my_cmd(data_centre_handle, task_handle, report_handle)
         my_cmd.cmdloop()
         

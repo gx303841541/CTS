@@ -265,19 +265,31 @@ class _cases_resource():
         for id in self.cases:
             yield(id)
 
+    def get_cases_types(self):
+        number = {}
+        for id in self.cases:
+            number[self.cases[id].get_case_type()] = 1
+        return number
+
     def get_one_case(self, case_type):
+        for id in sorted(self.cases):
+            if (self.get_case_state(id) == 'not_start' and self.get_case_type(id) == case_type) or (self.get_case_state(id) != 'running' and self.get_case_state(id) != 'done' and self.get_case_result(id) != 'pass' and self.get_run_times(id) < self.get_max_try_times(id) and self.get_case_type(id) == case_type):
+                return(id) 
+        return None
+
+    def get_next_case(self, case_type):
         for id in sorted(self.cases):
             if (self.get_case_state(id) == 'not_start' and self.get_case_type(id) == case_type) or (self.get_case_state(id) != 'running' and self.get_case_state(id) != 'done' and self.get_case_result(id) != 'pass' and self.get_run_times(id) < self.get_max_try_times(id) and self.get_case_type(id) == case_type):
                 yield(id) 
         return None
 
     def get_next_nostart_case(self, case_type):
-        for id in self.cases:
+        for id in sorted(self.cases):
             if self.get_case_state(id) == 'not_start' and self.get_case_type(id) == case_type:
                 yield(id)
 
     def get_next_fail_case(self, case_type):
-        for id in self.cases:
+        for id in sorted(self.cases):
             if self.get_case_state(id) != 'running' and self.get_case_state(id) != 'done' and self.get_case_result(id) != 'pass' and self.get_run_times(id) < self.get_max_try_times(id) and self.get_case_type(id) == case_type:
                 yield(id)
 
@@ -456,6 +468,12 @@ class _nodes_resource():
             self.queues[node]['cases_statistics']['total'] += 1
         else:
             LOG.p.warn("Invalid node: " + node)
+
+    def get_nodes_types(self):
+        number = {}
+        for node in self.queues:
+            number[self.queues[node]['type']] = 1
+        return number
 
 
 def gethostbyaddr(ip):

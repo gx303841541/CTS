@@ -184,7 +184,7 @@ class schedule_centre():
         if self.way == "onebyone":
             has_case = 'yes'
             while has_case:
-                case = self.data_centre.case_resource.get_one_case(self.types)
+                case = self.data_centre.case_resource.get_next_case(self.types)
                 has_case = case
                 if case:
                     LOG.p.debug("To run case:" + case)     
@@ -219,14 +219,15 @@ class schedule_centre():
                         if found_node == 'yes':
                             break
                         elif is_done == 'no':
-                            time.sleep(1)
+                            LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
+                            time.sleep(5)
 
                 if has_case:
                     continue
 
                 for case in self.data_centre.case_resource.get_case_by_state('running'):
                     if (self.data_centre.node_resource.get_node_state((self.data_centre.case_resource.get_run_node(case))[-1]) != 'working'
-                        and self.data_centre.case_resource.get_case_state(case) == 'running'):
+                        and self.data_centre.case_resource.get_case_state(case) == 'running' and self.data_centre.case_resource.get_case_type(case) == self.types):
                         LOG.p.error("%s maybe has lost result, set it to ongoing!" % (case))
                         self.data_centre.case_resource.set_case_state(case, 'ongoing')
                         has_case = 'yes'
@@ -236,8 +237,56 @@ class schedule_centre():
                     time.sleep(1)
 
         elif self.way == "fixed":
-            #TODO
-            pass
+            has_case = 'yes'
+            while has_case:
+                case = self.data_centre.case_resource.get_one_case(self.types)
+                has_case = case
+                if case:
+                    LOG.p.debug("To run case:" + case)     
+                    is_done = 'no'                
+                    while is_done == 'no':
+                        found_node = 'no'
+                        for node in self.data_centre.node_resource.get_all_nodes():
+                            if self.data_centre.node_resource.get_node_state(node) in ['active'] and self.data_centre.node_resource.get_node_type(node) == self.types:
+                                LOG.p.info("Run health check case: " + health_check_case + ' on ' + self.data_centre.node_resource.get_hostname(node)) 
+                                self.data_centre.node_resource.add_data_out(node, health_check_case + ' ')
+                                self.data_centre.node_resource.set_node_state(node, 'testing')
+
+                            elif self.data_centre.node_resource.get_node_state(node) in ['idle'] and self.data_centre.node_resource.get_node_type(node) == self.types:
+                                self.data_centre.node_resource.set_node_state(node, 'working')
+                                self.data_centre.case_resource.set_case_state(case, 'running')
+                                self.data_centre.case_resource.set_run_times(case)
+                                self.data_centre.case_resource.set_run_node(case, node)
+                                #self.data_centre.case_resource.set_run_node(case, self.data_centre.node_resource.get_hostname(node)) 
+                                self.data_centre.node_resource.add_data_out(node, case + ' ')
+                                self.data_centre.node_resource.add_ran_case(node, case)
+                                LOG.p.info("Run case: " + case + ' on ' + self.data_centre.node_resource.get_hostname(node))     
+                                is_done = 'yes'
+                                found_node = 'yes'
+                                break
+                            elif self.data_centre.node_resource.get_node_type(node) == self.types:
+                                LOG.p.debug(node + " in state:" + self.data_centre.node_resource.get_node_state(node))
+                        
+                        if found_node == 'yes':
+                            break
+                        elif is_done == 'no':
+                            LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
+                            time.sleep(5)
+
+                if has_case:
+                    continue
+
+                for case in self.data_centre.case_resource.get_case_by_state('running'):
+                    if (self.data_centre.node_resource.get_node_state((self.data_centre.case_resource.get_run_node(case))[-1]) != 'working'
+                        and self.data_centre.case_resource.get_case_state(case) == 'running' and self.data_centre.case_resource.get_case_type(case) == self.types):
+                        LOG.p.error("%s maybe has lost result, set it to ongoing!" % (case))
+                        self.data_centre.case_resource.set_case_state(case, 'ongoing')
+                        has_case = 'yes'
+                        continue
+                    LOG.p.debug("%s is still runing, wait it finish!" % (case))
+                    has_case = 'yes'
+                    time.sleep(1)
+
         else:
             for case in self.data_centre.case_resource.get_next_nostart_case(self.types):
                 LOG.p.info("To run case:" + case)     
@@ -249,12 +298,12 @@ class schedule_centre():
                             self.data_centre.node_resource.add_data_out(node, health_check_case + ' ')
                             self.data_centre.node_resource.set_node_state(node, 'testing')
                         elif self.data_centre.node_resource.get_node_state(node) in ['idle'] and self.data_centre.node_resource.get_node_type(node) == self.types:
+                            self.data_centre.node_resource.set_node_state(node, 'working')
                             self.data_centre.case_resource.set_case_state(case, 'running')
                             self.data_centre.case_resource.set_run_times(case)
                             self.data_centre.case_resource.set_run_node(case, node)
                             #self.data_centre.case_resource.set_run_node(case, self.data_centre.node_resource.get_hostname(node))                       
                             self.data_centre.node_resource.add_data_out(node, case + ' ')
-                            self.data_centre.node_resource.set_node_state(node, 'working')
                             self.data_centre.node_resource.add_ran_case(node, case)
                             LOG.p.info("Run case: " + case + ' on ' + self.data_centre.node_resource.get_hostname(node)) 
                             is_done = 'yes'
@@ -262,7 +311,8 @@ class schedule_centre():
                         elif self.data_centre.node_resource.get_node_type(node) == self.types:
                             LOG.p.debug(node + " in state:" + self.data_centre.node_resource.get_node_state(node))
                     if is_done == 'no':
-                        time.sleep(1)
+                        LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
+                        time.sleep(5)
 
             LOG.p.info("All %s cases had finish the first round! Now, to re-run the failed cases if have!" % (self.types))
 
@@ -286,12 +336,12 @@ class schedule_centre():
                                 LOG.p.debug("%s has failed on node: %s, so skip this node now." % (case, node))
                                 continue
                             elif self.data_centre.node_resource.get_node_state(node) in ['idle'] and self.data_centre.node_resource.get_node_type(node) == self.types:
+                                self.data_centre.node_resource.set_node_state(node, 'working')
                                 self.data_centre.case_resource.set_case_state(case, 'running')
                                 self.data_centre.case_resource.set_run_times(case)
                                 self.data_centre.case_resource.set_run_node(case, node)
                                 #self.data_centre.case_resource.set_run_node(case, self.data_centre.node_resource.get_hostname(node)) 
                                 self.data_centre.node_resource.add_data_out(node, case + ' ')
-                                self.data_centre.node_resource.set_node_state(node, 'working')
                                 self.data_centre.node_resource.add_ran_case(node, case)
                                 LOG.p.info("Run case: " + case + ' on ' + self.data_centre.node_resource.get_hostname(node))     
                                 is_done = 'yes'
@@ -302,11 +352,12 @@ class schedule_centre():
                         if found_node == 'yes':
                             break
                         elif is_done == 'no':
-                            time.sleep(1)
+                            LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
+                            time.sleep(5)
 
                 for case in self.data_centre.case_resource.get_case_by_state('running'):
                     if (self.data_centre.node_resource.get_node_state((self.data_centre.case_resource.get_run_node(case))[-1]) != 'working'
-                        and self.data_centre.case_resource.get_case_state(case) == 'running'):
+                        and self.data_centre.case_resource.get_case_state(case) == 'running' and self.data_centre.case_resource.get_case_type(case) == self.types):
                         LOG.p.error("%s maybe has lost result, set it to ongoing!" % (case))
                         self.data_centre.case_resource.set_case_state(case, 'ongoing')
                         has_case = 'yes'
@@ -415,16 +466,18 @@ if __name__ == '__main__':
         my_server = my_socket.my_server((arg_handle.get_args('server_IP'), arg_handle.get_args('server_port')), data_centre_handle)
         thread_list.append([my_server.run_forever])
 
-        schedule_centre_handle_s = schedule_centre(data_centre_handle, 'small', common_tool.semaphore, arg_handle.get_args('way'))
-        thread_list.append([schedule_centre_handle_s.run_forever])
 
-        schedule_centre_handle_l = schedule_centre(data_centre_handle, 'large', common_tool.semaphore, arg_handle.get_args('way'))
-        thread_list.append([schedule_centre_handle_l.run_forever])
+        #
+        kinds = data_centre_handle.case_resource.get_cases_types()
+        semaphore = threading.Semaphore(len(kinds))
+        for kind in kinds:
+            schedule_centre_handle = schedule_centre(data_centre_handle, kind, semaphore, arg_handle.get_args('way'))
+            thread_list.append([schedule_centre_handle.run_forever])
 
         stastics_handle = stastics_centre(data_centre_handle)
         thread_list.append([stastics_handle.run_forever])
 
-        report_handle = report.report(data_centre_handle, common_tool.semaphore, try_times=2)
+        report_handle = report.report(data_centre_handle, semaphore, try_times=len(kinds))
         thread_list.append([report_handle.run_onetimes])
 
         task_handle = task()

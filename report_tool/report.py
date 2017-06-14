@@ -30,10 +30,10 @@ class report():
         loop = 1
         time.sleep(1)
         for i in range(self.try_times):
+            LOG.p.info("Report thread unlock times: %d" % (i + 1))
             self.semaphore.acquire()
         while loop == 1:
             if self.data_centre.case_resource.is_all_cases_done():
-                LOG.p.info("It is time to give a report!")
                 self.give_report()
                 loop = 0
             else:
@@ -66,6 +66,7 @@ class report():
             r.write('-' * 30 + '\n')
             states = {}
             states['not_start'] = 0
+            states['running'] = 0
             rerults = {}
             rerults['pass'] = 0
 

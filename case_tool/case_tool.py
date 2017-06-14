@@ -297,6 +297,7 @@ class _cases_resource():
         P.common_p('-' * 30)
         states = {}
         states['not_start'] = 0
+        states['running'] = 0
         rerults = {}
         rerults['pass'] = 0
         for id in self.cases:

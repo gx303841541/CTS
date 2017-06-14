@@ -197,7 +197,7 @@ class schedule_centre():
                                 self.data_centre.node_resource.add_data_out(node, health_check_case + ' ')
                                 self.data_centre.node_resource.set_node_state(node, 'testing')
                             elif (self.data_centre.node_resource.get_hostname(node) in self.data_centre.case_resource.get_run_node(case) 
-                                or node in self.data_centre.case_resource.get_run_node(case)) and len(self.data_centre.node_resource.get_all_narmal_nodes(self.types)) > self.data_centre.case_resource.get_run_times(case):
+                                or node in self.data_centre.case_resource.get_run_node(case)) and self.data_centre.node_resource.get_node_state(node) in ['idle'] and len(self.data_centre.node_resource.get_all_narmal_nodes(self.types)) > self.data_centre.case_resource.get_run_times(case):
                                 found_node = 'yes'
                                 LOG.p.debug("%s has failed on node: %s, so skip this node now." % (case, node))
                                 continue
@@ -219,7 +219,7 @@ class schedule_centre():
                         if found_node == 'yes':
                             break
                         elif is_done == 'no':
-                            LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
+                            #LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
                             time.sleep(5)
 
                 if has_case:
@@ -270,7 +270,7 @@ class schedule_centre():
                         if found_node == 'yes':
                             break
                         elif is_done == 'no':
-                            LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
+                            #LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
                             time.sleep(5)
 
                 if has_case:
@@ -311,7 +311,6 @@ class schedule_centre():
                         elif self.data_centre.node_resource.get_node_type(node) == self.types:
                             LOG.p.debug(node + " in state:" + self.data_centre.node_resource.get_node_state(node))
                     if is_done == 'no':
-                        LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
                         time.sleep(5)
 
             LOG.p.info("All %s cases had finish the first round! Now, to re-run the failed cases if have!" % (self.types))
@@ -331,7 +330,7 @@ class schedule_centre():
                                 self.data_centre.node_resource.add_data_out(node, health_check_case + ' ')
                                 self.data_centre.node_resource.set_node_state(node, 'testing')
                             elif (self.data_centre.node_resource.get_hostname(node) in self.data_centre.case_resource.get_run_node(case) 
-                                or node in self.data_centre.case_resource.get_run_node(case)) and len(self.data_centre.node_resource.get_all_narmal_nodes(self.types)) > self.data_centre.case_resource.get_run_times(case):
+                                or node in self.data_centre.case_resource.get_run_node(case)) and self.data_centre.node_resource.get_node_state(node) in ['idle'] and len(self.data_centre.node_resource.get_all_narmal_nodes(self.types)) > self.data_centre.case_resource.get_run_times(case):
                                 found_node = 'yes'
                                 LOG.p.debug("%s has failed on node: %s, so skip this node now." % (case, node))
                                 continue
@@ -352,7 +351,6 @@ class schedule_centre():
                         if found_node == 'yes':
                             break
                         elif is_done == 'no':
-                            LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
                             time.sleep(5)
 
                 for case in self.data_centre.case_resource.get_case_by_state('running'):

@@ -124,6 +124,11 @@ class my_client:
             try:
                 self.client.connect(self.addr)
                 log_handle.p.info("Connection setup suceess!")
+                while not self.queue['in'].empty():
+                    self.queue['in'].get_nowait()
+
+                while not self.queue['out'].empty():
+                    self.queue['out'].get_nowait()
                 break
             except ConnectionRefusedError:
                 log_handle.p.warning("Connect to server failed, wait 10s...")   

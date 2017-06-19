@@ -280,7 +280,7 @@ class _cases_resource():
     def get_next_case(self, case_type):
         for id in sorted(self.cases):
             if (self.get_case_state(id) == 'not_start' and self.get_case_type(id) == case_type) or (self.get_case_state(id) != 'running' and self.get_case_state(id) != 'done' and self.get_case_result(id) != 'pass' and self.get_run_times(id) < self.get_max_try_times(id) and self.get_case_type(id) == case_type):
-                yield(id) 
+                yield(id)
         return None
 
     def get_next_nostart_case(self, case_type):
@@ -361,7 +361,8 @@ class _nodes_resource():
                     'cases_statistics' : {
                         'pass'  : 0,
                         'total' : 0,
-                    }
+                    },
+                    'health_check_sw': 'off',
                 }
             self.queues = queues
 
@@ -406,9 +407,34 @@ class _nodes_resource():
             if node in self.queues:
                 self.queues[node]['state'] = new_state
             else:
-                LOG.p.warn(new_state + " Invalid node: " + node)
+                LOG.p.warn("Invalid node: " + node)
         else:
             LOG.p.warn(new_state + " is invalid state!")
+
+    def get_health_check_sw(self, node):
+        if node in self.queues:
+            return self.queues[node]['health_check_sw']
+        else:
+            LOG.p.warn("Invalid node: " + node)
+            return None
+
+    @need_add_lock(my_lock)
+    def set_health_check_sw(self, node, value):
+        if value in ['on', 'off']:
+            if node in self.queues:
+                self.queues[node]['health_check_sw'] = value
+            else:
+                LOG.p.warn("Invalid node: " + node)
+        else:
+            LOG.p.warn(value + " is invalid value!")
+
+    @need_add_lock(my_lock)
+    def set_all_nodes_health_check_sw(self, value):
+        if value in ['on', 'off']:
+            for node in self.queues:
+                self.queues[node]['health_check_sw'] = value
+        else:
+            LOG.p.warn(value + " is invalid value!")
 
     @need_add_lock(my_lock)
     def show_node_state(self, node):
@@ -801,6 +827,9 @@ class case_handle():
                     caseid = self.in_queue.get().strip()
 
                     if caseid == 'eeeeeeee':
+                        while not self.out_queue.empty():
+                            LOG.p.info("It time to exit, but still have results need send to server!")
+                            time.sleep(1)
                         active_instance = common_tool.my_system("ps -ef |  grep -E CTS.py | grep -E -v 'grep|dtach'")
                         for old_pid in re.finditer(r'^root\s+(\d+)', active_instance, re.M):
                             LOG.p.critical("It time to exit!\nTo kill %s..." % (old_pid.group(1)))

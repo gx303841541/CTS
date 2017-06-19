@@ -59,9 +59,9 @@ class arg_handle():
             '-w', '--way',
             dest='way',
             action='store',
-            choices={'fixed', 'distribute', 'onebyone'},
+            choices={'fixed', 'distribute', 'onebyone', 'healthcheck'},
             default='distribute',
-            help='Specify how to schedule cases, "fixed", "distribute" are support now',
+            help='Specify how to schedule cases, ["fixed", "distribute", "onebyone", "healthcheck"] are support now',
         )
 
         parser.add_argument(
@@ -178,29 +178,30 @@ class schedule_centre():
 
     def run_forever(self):
         self.semaphore.acquire()
-        tmp_list = []
-        caseid = 1
 
-        if self.way == "onebyone":
+        if self.way == "distribute":
             has_case = 'yes'
             while has_case:
-                case = self.data_centre.case_resource.get_next_case(self.types)
-                has_case = case
-                if case:
+                has_case = None
+                for case in self.data_centre.case_resource.get_next_case(self.types):
+                    has_case = 'yes'
                     LOG.p.debug("To run case:" + case)     
                     is_done = 'no'                
                     while is_done == 'no':
                         found_node = 'no'
                         for node in self.data_centre.node_resource.get_all_nodes():
-                            if self.data_centre.node_resource.get_node_state(node) in ['active'] and self.data_centre.node_resource.get_node_type(node) == self.types:
+                            if (self.data_centre.node_resource.get_node_state(node) in ['active'] or (self.data_centre.node_resource.get_node_state(node) in ['idle']
+                                and self.data_centre.node_resource.get_health_check_sw(node) == 'on')) and self.data_centre.node_resource.get_node_type(node) == self.types:
                                 LOG.p.info("Run health check case: " + health_check_case + ' on ' + self.data_centre.node_resource.get_hostname(node)) 
                                 self.data_centre.node_resource.add_data_out(node, health_check_case + ' ')
                                 self.data_centre.node_resource.set_node_state(node, 'testing')
+
                             elif (self.data_centre.node_resource.get_hostname(node) in self.data_centre.case_resource.get_run_node(case) 
                                 or node in self.data_centre.case_resource.get_run_node(case)) and self.data_centre.node_resource.get_node_state(node) in ['idle'] and len(self.data_centre.node_resource.get_all_narmal_nodes(self.types)) > self.data_centre.case_resource.get_run_times(case):
                                 found_node = 'yes'
                                 LOG.p.debug("%s has failed on node: %s, so skip this node now." % (case, node))
                                 continue
+
                             elif self.data_centre.node_resource.get_node_state(node) in ['idle'] and self.data_centre.node_resource.get_node_type(node) == self.types:
                                 self.data_centre.case_resource.set_case_state(case, 'running')
                                 self.data_centre.case_resource.set_run_times(case)
@@ -215,15 +216,14 @@ class schedule_centre():
                                 break
                             elif self.data_centre.node_resource.get_node_type(node) == self.types:
                                 LOG.p.debug(node + " in state:" + self.data_centre.node_resource.get_node_state(node))
-                        
+                            
                         if found_node == 'yes':
                             break
                         elif is_done == 'no':
                             #LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
                             time.sleep(5)
 
-                if has_case:
-                    continue
+
 
                 for case in self.data_centre.case_resource.get_case_by_state('running'):
                     if (self.data_centre.node_resource.get_node_state((self.data_centre.case_resource.get_run_node(case))[-1]) != 'working'
@@ -247,7 +247,8 @@ class schedule_centre():
                     while is_done == 'no':
                         found_node = 'no'
                         for node in self.data_centre.node_resource.get_all_nodes():
-                            if self.data_centre.node_resource.get_node_state(node) in ['active'] and self.data_centre.node_resource.get_node_type(node) == self.types:
+                            if (self.data_centre.node_resource.get_node_state(node) in ['active'] or (self.data_centre.node_resource.get_node_state(node) in ['idle']
+                                and self.data_centre.node_resource.get_health_check_sw(node) == 'on')) and self.data_centre.node_resource.get_node_type(node) == self.types:
                                 LOG.p.info("Run health check case: " + health_check_case + ' on ' + self.data_centre.node_resource.get_hostname(node)) 
                                 self.data_centre.node_resource.add_data_out(node, health_check_case + ' ')
                                 self.data_centre.node_resource.set_node_state(node, 'testing')
@@ -287,13 +288,39 @@ class schedule_centre():
                     has_case = 'yes'
                     time.sleep(1)
 
+        elif self.way == "healthcheck":
+            has_node = 'yes'
+            round = 1
+            while has_node == 'yes':
+                LOG.p.info('-' * 20 + "Health check round: %d" % (round) + '-' * 20)
+                for node in self.data_centre.node_resource.get_all_nodes():            
+                    has_node = 'no'
+                    if self.data_centre.node_resource.get_node_state(node) in ['active'] or (self.data_centre.node_resource.get_node_state(node) in ['idle']
+                        and self.data_centre.node_resource.get_health_check_sw(node) == 'on'):
+                        LOG.p.info("Node: %s health check testing..." % self.data_centre.node_resource.get_hostname(node))
+                        self.data_centre.node_resource.add_data_out(node, health_check_case + ' ')
+                        self.data_centre.node_resource.set_node_state(node, 'testing')
+                        has_node = 'yes'
+
+                    elif self.data_centre.node_resource.get_node_state(node) in ['unreachable', 'dead']:
+                        LOG.p.critical("Node: %s health check fail, no connected!" % self.data_centre.node_resource.get_hostname(node))
+                        has_node = 'yes'
+                    elif self.data_centre.node_resource.get_node_state(node) in ['testing']:
+                        LOG.p.info("Node: %s health check testing..." % self.data_centre.node_resource.get_hostname(node))
+                        has_node = 'yes'
+                    else:              
+                        LOG.p.info("Node: %s health check pass!" % self.data_centre.node_resource.get_hostname(node))
+                time.sleep(10)
+                round += 1
+
         else:
             for case in self.data_centre.case_resource.get_next_nostart_case(self.types):
                 LOG.p.info("To run case:" + case)     
                 is_done = 'no' 
                 while is_done == 'no':       
                     for node in self.data_centre.node_resource.get_all_nodes():
-                        if self.data_centre.node_resource.get_node_state(node) in ['active'] and self.data_centre.node_resource.get_node_type(node) == self.types:
+                        if (self.data_centre.node_resource.get_node_state(node) in ['active'] or (self.data_centre.node_resource.get_node_state(node) in ['idle']
+                            and self.data_centre.node_resource.get_health_check_sw(node) == 'on')) and self.data_centre.node_resource.get_node_type(node) == self.types:
                             LOG.p.info("Run health check case: " + health_check_case + ' on ' + self.data_centre.node_resource.get_hostname(node)) 
                             self.data_centre.node_resource.add_data_out(node, health_check_case + ' ')
                             self.data_centre.node_resource.set_node_state(node, 'testing')
@@ -325,7 +352,8 @@ class schedule_centre():
                     while is_done == 'no':
                         found_node = 'no'
                         for node in self.data_centre.node_resource.get_all_nodes():
-                            if self.data_centre.node_resource.get_node_state(node) in ['active'] and self.data_centre.node_resource.get_node_type(node) == self.types:
+                            if (self.data_centre.node_resource.get_node_state(node) in ['active'] or (self.data_centre.node_resource.get_node_state(node) in ['idle']
+                                and self.data_centre.node_resource.get_health_check_sw(node) == 'on')) and self.data_centre.node_resource.get_node_type(node) == self.types:
                                 LOG.p.info("Run health check case: " + health_check_case + ' on ' + self.data_centre.node_resource.get_hostname(node)) 
                                 self.data_centre.node_resource.add_data_out(node, health_check_case + ' ')
                                 self.data_centre.node_resource.set_node_state(node, 'testing')
@@ -410,6 +438,7 @@ class stastics_centre():
                                     LOG.p.critical("Node: %s health check fail!" % self.data_centre.node_resource.get_hostname(node))
                                 else:
                                     LOG.p.info("Node: %s health check pass!" % self.data_centre.node_resource.get_hostname(node))
+                                    self.data_centre.node_resource.set_health_check_sw(node, 'off')
 
                             self.data_centre.node_resource.set_node_state(node, node_state)
                     else:
@@ -478,8 +507,9 @@ if __name__ == '__main__':
         report_handle = report.report(data_centre_handle, semaphore, try_times=len(kinds))
         thread_list.append([report_handle.run_onetimes])
 
-        task_handle = task()
-        thread_list.append([task_handle.task_proc])        
+        task_handle = task(data_centre_handle)
+        thread_list.append([task_handle.task_proc])
+        task_handle.add_task('health check', data_centre_handle.node_resource.set_all_nodes_health_check_sw, 3, 60 * 60 * 3, 'on')
         
         sys_proc()
 

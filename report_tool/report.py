@@ -30,8 +30,9 @@ class report():
         loop = 1
         time.sleep(1)
         for i in range(self.try_times):
-            LOG.p.info("Report thread unlock times: %d" % (i + 1))
+            LOG.p.info("Report thread try unlock times: %d" % (i + 1))
             self.semaphore.acquire()
+            LOG.p.info("Report thread has unlock times: %d" % (i + 1))
         while loop == 1:
             if self.data_centre.case_resource.is_all_cases_done():
                 self.give_report()
@@ -165,7 +166,7 @@ class report():
             r.write('Total: %d\n' % (total)) 
             r.write('=' * 60 + '\n')
 
-            for node in nodes:
+            for node in sorted(nodes):
                 if node in ['xxxx']:
                     continue
                 

@@ -12,7 +12,7 @@ def login(user, args):
     if re.search('CTS.py', ps_thread):
     	os.system('dtach -a %s -e ^q' % dtach_file)
     else:
-        os.system('dtach -A %s -e ^q /tmp/CTS/CTS.py %s' % (dtach_file, args))
+        os.system('dtach -A %s -e ^q ./CTS.py %s' % (dtach_file, args))
 
 
 def main( argv = sys.argv[1:] ) :

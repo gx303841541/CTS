@@ -15,7 +15,8 @@ LOG = my_logging(__name__ + '.log', clevel=logging.INFO, flevel=logging.INFO)
 P = cprint.cprint("__name__")
 
 class task():
-    def __init__(self):
+    def __init__(self, data_centre=None):
+        self.data_centre = data_centre
         self.tasks = {}
         self.lock = threading.RLock()
 
@@ -69,9 +70,13 @@ class task():
                     continue
                 self.lock.acquire()
                 self.tasks[task]['now_conter'] += 1
-                if self.tasks[task]['now_conter'] >= self.tasks[task]['interval']:
-                    LOG.p.info("It is time to run %s: " % (task) + self.tasks[task]['func'] + str(self.tasks[task]['argv']))
-                    eval(self.tasks[task]['func'] + '(*' + str(self.tasks[task]['argv']) + ')')
+                if self.tasks[task]['now_conter'] >= self.tasks[task]['interval']:               
+                    if callable(self.tasks[task]['func']):
+                        LOG.p.info("It is time to run %s: " % (task) + self.tasks[task]['func'].__name__ + str(self.tasks[task]['argv']))
+                        self.tasks[task]['func'](*(self.tasks[task]['argv']))
+                    else:
+                        LOG.p.info("It is time to run %s: " % (task) + self.tasks[task]['func'] + str(self.tasks[task]['argv']))
+                        eval(self.tasks[task]['func'] + '(*' + str(self.tasks[task]['argv']) + ')')
                     self.tasks[task]['now_conter'] = 0
                     self.tasks[task]['run_time'] -= 1
                     if self.tasks[task]['run_time'] == 0:

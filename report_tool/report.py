@@ -5,7 +5,7 @@
    by Kobe Gong. 2017-5-08
 """
 
-import yaml, re, random, time
+import yaml, re, random, time, datetime
 from log_tool.log_tool import my_logging
 import common_tool.cprint as cprint
 import threading
@@ -64,6 +64,7 @@ class report():
             yaml.dump(to_file, n)
 
         with open('report.log', 'w') as r:
+            r.write("Report create time: %s\n\n" % (datetime.datetime.now().strftime('%Y-%m-%d %X'))) 
             r.write('-' * 30 + '\n')
             states = {}
             states['not_start'] = 0
@@ -82,7 +83,7 @@ class report():
                     rerults[result] += 1
                 else:
                     rerults[result] = 1
-                        
+                      
             for item in sorted(states):
                 r.write("    " + item.ljust(20) + ':' + str(states[item]).rjust(20) + '\n')
             r.write('-' * 30 + '\n')
@@ -125,7 +126,7 @@ class report():
                 
 
                 ffd_id = id[:4]
-                if result != 'pass':
+                if result != 'pass' and result != 'empty':
                     total += 1
 
                     to_show = ("last fail on: %s" % (on_node)).rjust(40)
@@ -147,7 +148,7 @@ class report():
                     nodes[on_node]['pass'][id] = result
 
 
-            for ffd_id in r_rerults:
+            for ffd_id in sorted(r_rerults):
                 r.write("FFD%s: %d\n" % (ffd_id, len(r_rerults[ffd_id])))
                 for id in sorted(r_rerults[ffd_id]):
                     r.write("\t%s: %s\n" % (id, r_rerults[ffd_id][id]))

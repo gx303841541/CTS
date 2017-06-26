@@ -493,24 +493,33 @@ if __name__ == '__main__':
         my_server = my_socket.my_server((arg_handle.get_args('server_IP'), arg_handle.get_args('server_port')), data_centre_handle)
         thread_list.append([my_server.run_forever])
 
+        task_handle = task(data_centre_handle)
+        thread_list.append([task_handle.task_proc])
 
-        #
-        kinds = data_centre_handle.case_resource.get_cases_types()
-        semaphore = threading.Semaphore(len(kinds))
-        for kind in kinds:
-            schedule_centre_handle = schedule_centre(data_centre_handle, kind, semaphore, arg_handle.get_args('way'))
+        #create multi-thread to schedule all kinds of cases
+        if arg_handle.get_args('way') == "healthcheck":
+            semaphore = threading.Semaphore(1)
+            schedule_centre_handle = schedule_centre(data_centre_handle, None, semaphore, arg_handle.get_args('way'))
             thread_list.append([schedule_centre_handle.run_forever])
+
+            report_handle = report.report(data_centre_handle, semaphore, try_times=1)
+            thread_list.append([report_handle.run_onetimes])
+
+        else:
+            kinds = data_centre_handle.case_resource.get_cases_types()
+            semaphore = threading.Semaphore(len(kinds))
+            for kind in kinds:
+                schedule_centre_handle = schedule_centre(data_centre_handle, kind, semaphore, arg_handle.get_args('way'))
+                thread_list.append([schedule_centre_handle.run_forever])
+
+            report_handle = report.report(data_centre_handle, semaphore, try_times=len(kinds))
+            thread_list.append([report_handle.run_onetimes])
+
+            task_handle.add_task('health check', data_centre_handle.node_resource.set_all_nodes_health_check_sw, 3, 60 * 60 * 3, 'on')
 
         stastics_handle = stastics_centre(data_centre_handle)
         thread_list.append([stastics_handle.run_forever])
 
-        report_handle = report.report(data_centre_handle, semaphore, try_times=len(kinds))
-        thread_list.append([report_handle.run_onetimes])
-
-        task_handle = task(data_centre_handle)
-        thread_list.append([task_handle.task_proc])
-        task_handle.add_task('health check', data_centre_handle.node_resource.set_all_nodes_health_check_sw, 3, 60 * 60 * 3, 'on')
-        
         sys_proc()
 
         #cmd loop    

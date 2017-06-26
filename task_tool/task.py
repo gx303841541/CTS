@@ -88,6 +88,6 @@ class task():
 
 if __name__ == '__main__':
     task_sche = task_schedule();
-    task_sche.add_task('task test', print, 3, 5, 'fuck me')
-    task_sche.add_task('task test2', print, 4, 2, 'sleep me')
+    task_sche.add_task('task test', print, 3, 5, 'hello world')
+    task_sche.add_task('task test2', print, 4, 2, 'go to die')
     task_sche.shcedule_task()

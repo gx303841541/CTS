@@ -523,7 +523,7 @@ class case_handle():
     def run_case(self, id):
         LOG.p.info("Run: %s" % id)
         try:
-            common_tool.my_system_no_check("cd /opt/cts/installation_files && ./case_tool.pl -a %s && cd -" % (id))
+            common_tool.my_system_no_check("cd /opt/cts/installation_files && ./case_tool.pl -d %s && ./case_tool.pl -a %s && cd -" % (id, id))
             return common_tool.my_system_no_check("/opt/cts/cts_adaptor.pm -t %s -f /opt/cts_log/%s" % (id, self.log_dir))
         except Exception as e:
             LOG.p.warning("Run caseid: %s has error [%s]" % (id, e))

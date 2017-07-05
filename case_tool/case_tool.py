@@ -502,6 +502,17 @@ class _nodes_resource():
             number[self.queues[node]['type']] = 1
         return number
 
+    @need_add_lock(my_lock)
+    def add_case_to_node(self, node, case):
+        if node in self.queues:
+            self.add_data_out(node, case + ' ')
+        else:
+            LOG.p.warn("Invalid node: " + node)
+
+    def add_case_to_nodes(self, case):
+        for node in self.queues:
+            self.add_case_to_node(node, case)
+
 
 def gethostbyaddr(ip):
     return ip

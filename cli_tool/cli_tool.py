@@ -99,7 +99,16 @@ class my_cmd(Cmd):
       
     def do_listtask(self, arg, opts=None):  
         self.task_handle.show_tasks() 
-               
+
+    def help_stopnode(self):  
+        P.common_p("Will send 'eeeeeeee' to the given node(s)")
+      
+    def do_stopnode(self, arg, opts=None):
+        if arg == 'all':
+            self.data_centre.node_resource.add_case_to_nodes('eeeeeeee')    
+        else:   
+            self.data_centre.node_resource.add_case_to_node(arg, 'eeeeeeee')
+
     def default(self, arg, opts=None):
         try:
             subprocess.call(arg, shell=True)

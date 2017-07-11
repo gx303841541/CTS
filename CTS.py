@@ -221,7 +221,7 @@ class schedule_centre():
                             break
                         elif is_done == 'no':
                             #LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
-                            time.sleep(5)
+                            time.sleep(0.1)
 
 
 
@@ -272,7 +272,7 @@ class schedule_centre():
                             break
                         elif is_done == 'no':
                             #LOG.p.error("No available %s node for case: %s! please to check these kinds of node!" % (self.types, case))
-                            time.sleep(5)
+                            time.sleep(0.1)
 
                 if has_case:
                     continue
@@ -314,85 +314,7 @@ class schedule_centre():
                 round += 1
 
         else:
-            for case in self.data_centre.case_resource.get_next_nostart_case(self.types):
-                LOG.p.info("To run case:" + case)     
-                is_done = 'no' 
-                while is_done == 'no':       
-                    for node in self.data_centre.node_resource.get_all_nodes():
-                        if (self.data_centre.node_resource.get_node_state(node) in ['active'] or (self.data_centre.node_resource.get_node_state(node) in ['idle']
-                            and self.data_centre.node_resource.get_health_check_sw(node) == 'on')) and self.data_centre.node_resource.get_node_type(node) == self.types:
-                            LOG.p.info("Run health check case: " + health_check_case + ' on ' + self.data_centre.node_resource.get_hostname(node)) 
-                            self.data_centre.node_resource.add_data_out(node, health_check_case + ' ')
-                            self.data_centre.node_resource.set_node_state(node, 'testing')
-                        elif self.data_centre.node_resource.get_node_state(node) in ['idle'] and self.data_centre.node_resource.get_node_type(node) == self.types:
-                            self.data_centre.node_resource.set_node_state(node, 'working')
-                            self.data_centre.case_resource.set_case_state(case, 'running')
-                            self.data_centre.case_resource.set_run_times(case)
-                            self.data_centre.case_resource.set_run_node(case, node)
-                            #self.data_centre.case_resource.set_run_node(case, self.data_centre.node_resource.get_hostname(node))                       
-                            self.data_centre.node_resource.add_data_out(node, case + ' ')
-                            self.data_centre.node_resource.add_ran_case(node, case)
-                            LOG.p.info("Run case: " + case + ' on ' + self.data_centre.node_resource.get_hostname(node)) 
-                            is_done = 'yes'
-                            break
-                        elif self.data_centre.node_resource.get_node_type(node) == self.types:
-                            LOG.p.debug(node + " in state:" + self.data_centre.node_resource.get_node_state(node))
-                    if is_done == 'no':
-                        time.sleep(5)
-
-            LOG.p.info("All %s cases had finish the first round! Now, to re-run the failed cases if have!" % (self.types))
-
-            has_case = 'yes'
-            while has_case == 'yes':
-                has_case = 'no'
-                for case in self.data_centre.case_resource.get_next_fail_case(self.types):
-                    has_case = 'yes'     
-                    LOG.p.debug("To run case:" + case)     
-                    is_done = 'no'                
-                    while is_done == 'no':
-                        found_node = 'no'
-                        for node in self.data_centre.node_resource.get_all_nodes():
-                            if (self.data_centre.node_resource.get_node_state(node) in ['active'] or (self.data_centre.node_resource.get_node_state(node) in ['idle']
-                                and self.data_centre.node_resource.get_health_check_sw(node) == 'on')) and self.data_centre.node_resource.get_node_type(node) == self.types:
-                                LOG.p.info("Run health check case: " + health_check_case + ' on ' + self.data_centre.node_resource.get_hostname(node)) 
-                                self.data_centre.node_resource.add_data_out(node, health_check_case + ' ')
-                                self.data_centre.node_resource.set_node_state(node, 'testing')
-                            elif (self.data_centre.node_resource.get_hostname(node) in self.data_centre.case_resource.get_run_node(case) 
-                                or node in self.data_centre.case_resource.get_run_node(case)) and self.data_centre.node_resource.get_node_state(node) in ['idle'] and len(self.data_centre.node_resource.get_all_narmal_nodes(self.types)) > self.data_centre.case_resource.get_run_times(case):
-                                found_node = 'yes'
-                                LOG.p.debug("%s has failed on node: %s, so skip this node now." % (case, node))
-                                continue
-                            elif self.data_centre.node_resource.get_node_state(node) in ['idle'] and self.data_centre.node_resource.get_node_type(node) == self.types:
-                                self.data_centre.node_resource.set_node_state(node, 'working')
-                                self.data_centre.case_resource.set_case_state(case, 'running')
-                                self.data_centre.case_resource.set_run_times(case)
-                                self.data_centre.case_resource.set_run_node(case, node)
-                                #self.data_centre.case_resource.set_run_node(case, self.data_centre.node_resource.get_hostname(node)) 
-                                self.data_centre.node_resource.add_data_out(node, case + ' ')
-                                self.data_centre.node_resource.add_ran_case(node, case)
-                                LOG.p.info("Run case: " + case + ' on ' + self.data_centre.node_resource.get_hostname(node))     
-                                is_done = 'yes'
-                                found_node = 'yes'
-                                break
-                            elif self.data_centre.node_resource.get_node_type(node) == self.types:
-                                LOG.p.debug(node + " in state:" + self.data_centre.node_resource.get_node_state(node))
-                        if found_node == 'yes':
-                            break
-                        elif is_done == 'no':
-                            time.sleep(5)
-
-                for case in self.data_centre.case_resource.get_case_by_state('running'):
-                    if (self.data_centre.node_resource.get_node_state((self.data_centre.case_resource.get_run_node(case))[-1]) != 'working'
-                        and self.data_centre.case_resource.get_case_state(case) == 'running' and self.data_centre.case_resource.get_case_type(case) == self.types):
-                        LOG.p.error("%s maybe has lost result, set it to ongoing!" % (case))
-                        self.data_centre.case_resource.set_case_state(case, 'ongoing')
-                        has_case = 'yes'
-                        continue
-                    LOG.p.debug("%s is still runing, wait it finish!" % (case))
-                    has_case = 'yes'
-                    time.sleep(1)
-
-
+            pass
 
 
         #It time to let slient exit!
@@ -455,7 +377,7 @@ def sys_proc(action="default"):
     for th in thread_ids:
         th.setDaemon(True)        
         th.start()
-        time.sleep(1)
+        time.sleep(0.1)
 
     #for th in thread_ids:        
     #    th.join() 

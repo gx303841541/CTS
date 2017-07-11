@@ -39,7 +39,7 @@ class report():
                 loop = 0
             else:
                 LOG.p.info("It is time to give a report, but some cases still onging, wait...")
-                time.sleep(30)
+                time.sleep(10)
                 continue
                 
         for i in range(self.try_times):

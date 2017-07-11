@@ -28,7 +28,7 @@ class my_server:
     def run_forever(self):
         epoll = select.epoll()
         epoll.register(self.server.fileno(), select.EPOLLIN | select.EPOLLHUP)
-        timeout = 1
+        timeout = 0.1
         BUFF_SIZE = 1024
         fileno_to_addr = {}
 
@@ -91,6 +91,7 @@ class my_server:
                         data = self.data_centre.node_resource.get_data_out(fileno_to_addr[fileno])                                          
                         self.data_centre.node_resource.get_conn(fileno_to_addr[fileno]).send(str(data).encode('utf-8'))
                         log_handle.p.info("Send data to " + self.data_centre.node_resource.get_hostname(fileno_to_addr[fileno]) + ": " + str(data))
+
         except KeyboardInterrupt:
             for client in self.clients:
                 self.data_centre.node_resource.get_conn(fileno_to_addr[fileno]).close()
@@ -136,7 +137,7 @@ class my_client:
 
         epoll = select.epoll()
         epoll.register(self.client.fileno(), select.EPOLLIN | select.EPOLLERR | select.EPOLLHUP)
-        timeout = 1
+        timeout = 0.1
         BUFF_SIZE = 1024
 
         try:

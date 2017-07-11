@@ -832,7 +832,7 @@ class case_handle():
             try:
                 if self.in_queue.empty():
                     LOG.p.debug("No case need run...")
-                    time.sleep(1)
+                    time.sleep(0.1)
                     pass
                 else:
                     caseid = self.in_queue.get().strip()

@@ -78,7 +78,7 @@ class arg_handle():
             action='append',
             metavar='pattern', 
             #required=True,
-            default=['case.yaml'],
+            default=[],
             help='Specify all case info',
         )
         
